@@ -4,21 +4,17 @@
 package main
 
 import (
-	"fmt"
-	"log"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/fatih/color"
-	// "github.com/jroimartin/gocui" // 한글(utf8) 출력에 문제가 있음
-	"github.com/ysoftman/gocui"
+	termbox "github.com/nsf/termbox-go"
 )
 
 var done = make(chan struct{})
 
 func main() {
-	StartGoCui()
+	startGame()
 }
 
 func GetColorString(cl, str string) string {
@@ -47,71 +43,27 @@ func GetColorString(cl, str string) string {
 	}
 }
 
-func layout(g *gocui.Gui) error {
-	maxX, maxY := g.Size()
-	if v, err := g.SetView("words view", 0, 0, maxX-2, maxY-11); err != nil {
-		if err != gocui.ErrUnknownView {
-			return err
-		}
-		v.Title = "taja game"
-		v.SetCursor(((maxY / 2) - len(v.Title)/2), 0)
-
-	}
-	if v, err := g.SetView("input area", 0, maxY-10, maxX-2, maxY-8); err != nil {
-		if err != gocui.ErrUnknownView {
-			return err
-		}
-		v.Editable = true
-		v.Highlight = true
-		v.Frame = true
-		v.SetCursor(0, 0)
-		g.SetCurrentView("input area")
-	}
-	if v, err := g.SetView("status area", 0, maxY-7, maxX-2, maxY-2); err != nil {
-		if err != gocui.ErrUnknownView {
-			return err
-		}
-		v.Title = "status"
-		v.SetCursor(0, 0)
-		g.FgColor = gocui.ColorGreen
-	}
-
-	return nil
+type enemyWord struct {
+	x    int
+	y    int
+	word string
 }
 
-func inputAction(g *gocui.Gui, v *gocui.View) error {
-	g.Update(func(g *gocui.Gui) error {
-		inputView, _ := g.View("input view")
-		word := strings.TrimSpace(inputView.Buffer())
-		inputView.Clear()
-		inputView.SetCursor(0, 0)
-
-		wordsView, _ := g.View("words view")
-		wordsView.Clear()
-		fmt.Fprint(wordsView, GetColorString("green", word))
-		return nil
-	})
-	return nil
-}
-
-func quit(g *gocui.Gui, v *gocui.View) error {
-	close(done)
-	return gocui.ErrQuit
-}
-
-func StartGoCui() {
-	g, err := gocui.NewGui(gocui.OutputNormal)
+func startGame() {
+	err := termbox.Init()
 	if err != nil {
-		log.Panicln(err)
+		panic(err)
 	}
-	defer g.Close()
-	g.SetManagerFunc(layout)
-	if err := g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, quit); err != nil {
-		log.Panicln(err)
-	}
-	if err := g.SetKeybinding("", gocui.KeyEnter, gocui.ModNone, inputAction); err != nil {
-		log.Panicln(err)
-	}
+	defer termbox.Close()
+	termbox.SetInputMode(termbox.InputEsc)
+	termbox.Flush()
+
+	initConstValue()
+	gameView = NewView(gameViewStartX, gameViewEndX, gameViewStartY, gameViewEndY)
+	gameView.drawMainVew()
+
+	ibox = NewInputBox(inputBoxStartX, inputBoxEndX, inputBoxStartY, inputBoxEndY)
+	ibox.drawInputBox()
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -122,31 +74,46 @@ func StartGoCui() {
 			select {
 			case <-done:
 				return
-
 			case <-time.After(1 * time.Second):
-				g.Update(func(g *gocui.Gui) error {
-					wordsView, _ := g.View("words view")
-					wordsView.Clear()
-					wordsView.SetCursor(x, y)
-					debugstr := fmt.Sprintf("(%d,%d)", x, y)
-					fmt.Fprintln(wordsView, GetColorString("", "apple"+debugstr))
-					y++
-					maxx, maxy := g.Size()
-					if x >= maxx {
-						x = 1
-					}
-					if y >= maxy-15 {
-						y = 1
-					}
-
-					return nil
-				})
+				gameView.clear()
+				gameView.printString(x, y, "가나다라마바사", termbox.ColorWhite)
+				y++
+				if x >= gameView.endx {
+					x = gameView.startx
+				}
+				if y >= gameView.endy {
+					y = gameView.starty
+				}
+				continue
 			}
 		}
 	}()
 
-	if err := g.MainLoop(); err != nil && err != gocui.ErrQuit {
-		log.Panicln(err)
+mainloop:
+	for {
+		switch ev := termbox.PollEvent(); ev.Type {
+		case termbox.EventKey:
+			switch ev.Key {
+			case termbox.KeyCtrlQ, termbox.KeyCtrlC:
+				close(done)
+				break mainloop
+			case termbox.KeyEnter:
+				ibox.keyEnter()
+				continue
+			case termbox.KeySpace:
+				ibox.setChar(' ')
+				continue
+			case termbox.KeyDelete, termbox.KeyBackspace, termbox.KeyBackspace2:
+				ibox.delChar()
+				continue
+			default:
+				if ev.Ch != 0 {
+					ibox.setChar(ev.Ch)
+				}
+			}
+		case termbox.EventError:
+			panic(ev.Err)
+		}
 	}
 
 	wg.Wait()
