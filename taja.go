@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fatih/color"
 	termbox "github.com/nsf/termbox-go"
 )
 
@@ -15,38 +14,6 @@ var done = make(chan struct{})
 
 func main() {
 	startGame()
-}
-
-func GetColorString(cl, str string) string {
-	switch cl {
-	case "yellow":
-		yellow := color.New(color.FgYellow).SprintFunc()
-		return yellow(str)
-	case "green":
-		green := color.New(color.FgGreen).SprintFunc()
-		return green(str)
-	case "red":
-		red := color.New(color.FgRed).SprintFunc()
-		return red(str)
-	case "blue":
-		blue := color.New(color.FgBlue).SprintFunc()
-		return blue(str)
-	case "magenta":
-		magenta := color.New(color.FgMagenta).SprintFunc()
-		return magenta(str)
-	case "cyan":
-		cyan := color.New(color.FgCyan).SprintFunc()
-		return cyan(str)
-	default:
-		white := color.New(color.FgWhite).SprintFunc()
-		return white(str)
-	}
-}
-
-type enemyWord struct {
-	x    int
-	y    int
-	word string
 }
 
 func startGame() {
@@ -58,7 +25,9 @@ func startGame() {
 	termbox.SetInputMode(termbox.InputEsc)
 	termbox.Flush()
 
-	initConstValue()
+	reset()
+	setEnemyWords()
+
 	gameView = NewView(gameViewStartX, gameViewEndX, gameViewStartY, gameViewEndY)
 	gameView.drawMainVew()
 
@@ -67,23 +36,28 @@ func startGame() {
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	x, y := 1, 1
 	go func() {
 		defer wg.Done()
 		for {
 			select {
 			case <-done:
 				return
+
 			case <-time.After(1 * time.Second):
-				gameView.clear()
-				gameView.printString(x, y, "가나다라마바사", termbox.ColorWhite)
-				y++
-				if x >= gameView.endx {
-					x = gameView.startx
+				// Add Enemy Word
+				nw := getRandomWord()
+				liveWords = append(liveWords, nw)
+
+				// Refresh All Enemy Words
+				for idx, _ := range liveWords {
+					gameView.clearPrePos(liveWords[idx])
+					liveWords[idx].y++
+					if liveWords[idx].y >= gameView.endy {
+						liveWords[idx].y = gameView.starty
+					}
+					gameView.printString(liveWords[idx].x, liveWords[idx].y, liveWords[idx].str, termbox.ColorWhite)
 				}
-				if y >= gameView.endy {
-					y = gameView.starty
-				}
+
 				continue
 			}
 		}

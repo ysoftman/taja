@@ -53,3 +53,10 @@ func (v *View) clear() {
 	}
 	render()
 }
+
+func (v *View) clearPrePos(w word) {
+	for x := 0; x < len(w.str); x++ {
+		termbox.SetCell(w.x+x, w.y, ' ', termbox.ColorYellow|termbox.AttrBold, termbox.ColorDefault)
+	}
+	render()
+}
