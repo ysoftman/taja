@@ -5,37 +5,32 @@ import (
 	termbox "github.com/nsf/termbox-go"
 )
 
-type View struct {
-	startx int
-	endx   int
-	starty int
-	endy   int
-}
-
-func NewView(x1, x2, y1, y2 int) *View {
+func NewView(x1, x2, y1, y2 int, fg, bg termbox.Attribute) *View {
 	return &View{
-		startx: x1,
-		endx:   x2,
-		starty: y1,
-		endy:   y2,
+		startx:  x1,
+		endx:    x2,
+		starty:  y1,
+		endy:    y2,
+		fgcolor: fg,
+		bgcolor: bg,
 	}
 }
 
-func (v *View) drawMainVew() {
+func (v *View) drawView() {
 	for y := v.starty; y < v.endy; y++ {
 		for x := v.startx; x < v.endx; x++ {
 			ch := '█'
-			if y != 0 && y != v.endy-1 && x != 0 && x != v.endx-1 {
+			if y != v.starty && y != v.endy-1 && x != v.startx && x != v.endx-1 {
 				continue
 			}
-			termbox.SetCell(x, y, ch, termbox.ColorYellow|termbox.AttrBold, termbox.ColorDefault)
+			termbox.SetCell(x, y, ch, v.fgcolor, v.bgcolor)
 		}
 	}
 }
 
 func (v *View) printString(x, y int, str string, fgcolor termbox.Attribute) {
 	for _, runeValue := range str {
-		termbox.SetCell(x, y, runeValue, fgcolor, termbox.ColorDefault)
+		termbox.SetCell(v.startx+x, v.starty+y, runeValue, fgcolor, termbox.ColorDefault)
 		w := runewidth.RuneWidth(runeValue)
 		if w == 0 || (w == 2 && runewidth.IsAmbiguousWidth(runeValue)) {
 			w = 1
@@ -59,4 +54,9 @@ func (v *View) clearPrePos(w word) {
 		termbox.SetCell(w.x+x, w.y, ' ', termbox.ColorYellow|termbox.AttrBold, termbox.ColorDefault)
 	}
 	render()
+}
+
+func (v *View) debug(str string) {
+	v.clear()
+	v.printString(1, 1, str, termbox.ColorYellow)
 }

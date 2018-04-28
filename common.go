@@ -4,15 +4,42 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/fatih/color"
 	termbox "github.com/nsf/termbox-go"
 )
 
-type word struct {
-	x   int
-	y   int
-	str string
+type View struct {
+	startx  int
+	endx    int
+	starty  int
+	endy    int
+	fgcolor termbox.Attribute
+	bgcolor termbox.Attribute
 }
+
+type inputBox struct {
+	startx   int
+	endx     int
+	starty   int
+	endy     int
+	curpos   int
+	inputstr string
+	fgcolor  termbox.Attribute
+	bgcolor  termbox.Attribute
+}
+
+type word struct {
+	status int
+	x      int
+	y      int
+	str    string
+}
+
+const (
+	wordStatusEmpty = iota
+	wordStatusCreated
+	wordStatusDeleted
+	wordStatusFreeing
+)
 
 var (
 	gameViewStartX = 0
@@ -25,10 +52,43 @@ var (
 	inputBoxStartY = 0
 	inputBoxEndY   = 0
 
-	enemyWords []word
-	liveWords  []word
-	gameView   *View
-	ibox       *inputBox
+	statusViewStartX = 0
+	statusViewEndX   = 0
+	statusViewStartY = 0
+	statusViewEndY   = 0
+
+	cmdViewStartX = 0
+	cmdViewEndX   = 0
+	cmdViewStartY = 0
+	cmdViewEndY   = 0
+
+	debugViewStartX = 0
+	debugViewEndX   = 0
+	debugViewStartY = 0
+	debugViewEndY   = 0
+
+	loadedWords  []word
+	fallingWords []word
+	gameView     *View
+	statusView   *View
+	cmdView      *View
+	debugView    *View
+	ibox         *inputBox
+
+	msgKillCnt   = "Kill Words : "
+	msgMissCnt   = "Miss Words : "
+	msgCPM       = "CPM(CharacterPerMinute) : "
+	msgGameScore = "Score : "
+
+	msgQuitCmd   = "Quit : ctrl + c  or  ctrl + q"
+	msgURL       = "http://github.com/ysoftman/taja"
+	msgGameClear = "Game Clear"
+
+	killCnt   = 0
+	missCnt   = 0
+	gameScore = 0
+	prelapsec = time.Now().Unix()
+	cpm       = 0
 )
 
 func reset() {
@@ -36,79 +96,92 @@ func reset() {
 
 	gameViewStartX = 0
 	gameViewStartY = 0
-	gameViewEndX = mx - 1
+	gameViewEndX = mx
 	gameViewEndY = my - (my / 4)
 
 	inputBoxStartX = 0
-	inputBoxEndX = mx - 1
+	inputBoxEndX = mx
 	inputBoxStartY = gameViewEndY
-	inputBoxEndY = my - 1
+	inputBoxEndY = inputBoxStartY + 3
+
+	statusViewStartX = 0
+	statusViewEndX = mx / 2
+	statusViewStartY = inputBoxEndY
+	statusViewEndY = my
+
+	cmdViewStartX = statusViewEndX
+	cmdViewEndX = mx
+	cmdViewStartY = inputBoxEndY
+	cmdViewEndY = my - 3
+
+	debugViewStartX = statusViewEndX
+	debugViewEndX = mx
+	debugViewStartY = cmdViewEndY
+	debugViewEndY = my
 
 	rand.Seed(time.Now().UnixNano())
 }
 
 func render() {
-	gameView.drawMainVew()
+	gameView.drawView()
 	ibox.drawInputBox()
-
+	statusView.drawView()
+	cmdView.drawView()
+	debugView.drawView()
 	termbox.Flush()
 }
 
-func getColorString(cl, str string) string {
-	switch cl {
-	case "yellow":
-		yellow := color.New(color.FgYellow).SprintFunc()
-		return yellow(str)
-	case "green":
-		green := color.New(color.FgGreen).SprintFunc()
-		return green(str)
-	case "red":
-		red := color.New(color.FgRed).SprintFunc()
-		return red(str)
-	case "blue":
-		blue := color.New(color.FgBlue).SprintFunc()
-		return blue(str)
-	case "magenta":
-		magenta := color.New(color.FgMagenta).SprintFunc()
-		return magenta(str)
-	case "cyan":
-		cyan := color.New(color.FgCyan).SprintFunc()
-		return cyan(str)
-	default:
-		white := color.New(color.FgWhite).SprintFunc()
-		return white(str)
-	}
-}
-
 func setEnemyWords() {
-	enemyWords = []word{
-		{0, 0, "apple"},
-		{0, 0, "lemon"},
-		{0, 0, "okay"},
-		{0, 0, "love"},
-		{0, 0, "slow"},
-		{0, 0, "golang"},
-		{0, 0, "rainbow"},
-		{0, 0, "fruite"},
-		{0, 0, "bicycle"},
-		{0, 0, "train"},
-		{0, 0, "car"},
-		{0, 0, "level"},
-		{0, 0, "superman"},
+	loadedWords = []word{
+		{wordStatusCreated, 0, 0, "apple"},
+		{wordStatusCreated, 0, 0, "lemon"},
+		{wordStatusCreated, 0, 0, "okay"},
+		{wordStatusCreated, 0, 0, "love"},
+		{wordStatusCreated, 0, 0, "slow"},
+		{wordStatusCreated, 0, 0, "golang"},
+		{wordStatusCreated, 0, 0, "rainbow"},
+		{wordStatusCreated, 0, 0, "fruite"},
+		{wordStatusCreated, 0, 0, "bicycle"},
+		{wordStatusCreated, 0, 0, "train"},
+		{wordStatusCreated, 0, 0, "car"},
+		{wordStatusCreated, 0, 0, "level"},
+		{wordStatusCreated, 0, 0, "superman"},
 	}
 }
 
 func getRandomWord() word {
-	n := len(enemyWords)
+	n := len(loadedWords)
 	if n <= 0 {
-		return word{0, 0, "---"}
+		return word{wordStatusEmpty, 0, 0, ""}
 	}
 	i := rand.Intn(n)
-	w := enemyWords[i]
-	w.x = rand.Intn(gameViewEndX - len(w.str))
+	w := loadedWords[i]
+	w.x = rand.Intn(gameViewEndX-len(w.str)-1) + 1
 
-	// delete return word element in enemyWords
-	enemyWords = append(enemyWords[:i], enemyWords[i+1:]...)
+	// delete return word element in loadedWords
+	loadedWords = append(loadedWords[:i], loadedWords[i+1:]...)
 
 	return w
+}
+
+func deleteFallingWord(str string) bool {
+	for i := range fallingWords {
+		if fallingWords[i].str == str {
+			fallingWords[i].status = wordStatusDeleted
+			return true
+		}
+	}
+	return false
+}
+
+func checkGameClear() bool {
+	if len(fallingWords) == 0 {
+		return true
+	}
+	for i := range fallingWords {
+		if fallingWords[i].status != wordStatusDeleted {
+			return false
+		}
+	}
+	return true
 }
