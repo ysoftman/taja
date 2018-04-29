@@ -17,22 +17,6 @@ func main() {
 	startGame()
 }
 
-func updateKillCnt(n int) {
-	statusView.printString(1, 1, msgKillCnt+strconv.Itoa(n), termbox.ColorDefault)
-}
-
-func updateMissCnt(n int) {
-	statusView.printString(1, 2, msgMissCnt+strconv.Itoa(n), termbox.ColorDefault)
-}
-
-func updateCPM(n int) {
-	statusView.printString(1, 3, msgCPM+strconv.Itoa(n), termbox.ColorDefault)
-}
-
-func updateGameScore(n int) {
-	statusView.printString(1, 4, msgGameScore+strconv.Itoa(n), termbox.ColorDefault)
-}
-
 func startGame() {
 	err := termbox.Init()
 	if err != nil {
@@ -43,7 +27,6 @@ func startGame() {
 	termbox.Flush()
 
 	reset()
-	setEnemyWords()
 
 	gameView = NewView(gameViewStartX, gameViewEndX, gameViewStartY, gameViewEndY, termbox.ColorGreen|termbox.AttrBold, termbox.ColorDefault)
 	gameView.drawView()
@@ -57,16 +40,12 @@ func startGame() {
 	cmdView = NewView(cmdViewStartX, cmdViewEndX, cmdViewStartY, cmdViewEndY, termbox.ColorCyan|termbox.AttrBold, termbox.ColorDefault)
 	cmdView.drawView()
 
-	debugView = NewView(debugViewStartX, debugViewEndX, debugViewStartY, debugViewEndY, termbox.ColorRed|termbox.AttrBold, termbox.ColorDefault)
+	debugView = NewView(debugViewStartX, debugViewEndX, debugViewStartY, debugViewEndY, termbox.ColorBlack|termbox.AttrBold, termbox.ColorDefault)
 	debugView.drawView()
 
-	cmdView.printString(1, 1, msgQuitCmd, termbox.ColorDefault)
-	cmdView.printString(1, 2, msgURL, termbox.ColorDefault)
+	gameClearView = NewView(gameClearViewStartX, gameClearViewEndX, gameClearViewStartY, gameClearViewEndY, termbox.ColorBlack|termbox.AttrBold, termbox.ColorDefault)
 
-	updateKillCnt(0)
-	updateMissCnt(0)
-	updateGameScore(0)
-	updateCPM(0)
+	gameOverView = NewView(gameOverViewStartX, gameOverViewEndX, gameOverViewStartY, gameOverViewEndY, termbox.ColorBlack|termbox.AttrBold, termbox.ColorDefault)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -78,28 +57,52 @@ func startGame() {
 				return
 
 			case <-time.After(1 * time.Second):
-				// Add Enemy Word
-				nw := getRandomWord()
-				if nw.status == wordStatusCreated {
-					fallingWords = append(fallingWords, nw)
+				debugView.debug("gameStatus : " + strconv.Itoa(gameStatus))
+				if gameStatus == gameStatusNone {
+					reset()
+					render()
+					continue
 				}
-				// Refresh All Enemy Words
-				for idx := range fallingWords {
-					gameView.clearPrePos(fallingWords[idx])
-					fallingWords[idx].y++
-					if fallingWords[idx].y >= gameView.endy {
-						fallingWords[idx].y = gameView.starty + 1
+				if gameStatus == gameStatusPlaying {
+					debugstr := "loadedWords : " + strconv.Itoa(len(loadedWords)) + ", "
+					debugstr += "fallingWords : " + strconv.Itoa(len(fallingWords)) + ""
+					debugView.debug(debugstr)
+					// Add Enemy Word
+					nw := getRandomWord()
+					if nw.status == wordStatusCreated {
+						fallingWords = append(fallingWords, nw)
+					}
+					// Refresh All Enemy Words
+					for idx := range fallingWords {
+
+						gameView.clearPrePos(fallingWords[idx])
+						fallingWords[idx].y++
+						if fallingWords[idx].y >= gameView.endy {
+							fallingWords[idx].y = gameView.starty + 1
+							if fallingWords[idx].status == wordStatusCreated {
+								missCnt++
+								updateMissCnt(missCnt)
+
+								if missCnt == liveCnt {
+									gameStatus = gameStatusGameOver
+									break
+
+								}
+							}
+						}
 						if fallingWords[idx].status == wordStatusCreated {
-							missCnt++
-							updateMissCnt(missCnt)
+							gameView.printString(fallingWords[idx].x, fallingWords[idx].y, fallingWords[idx].str, termbox.ColorWhite)
 						}
 					}
-					if fallingWords[idx].status == wordStatusCreated {
-						gameView.printString(fallingWords[idx].x, fallingWords[idx].y, fallingWords[idx].str, termbox.ColorWhite)
-					}
+					continue
 				}
-
-				continue
+				if gameStatus == gameStatusGameClear {
+					showGameClear()
+					continue
+				} else if gameStatus == gameStatusGameOver {
+					showGameOver()
+					continue
+				}
 			}
 		}
 	}()
@@ -112,6 +115,11 @@ mainloop:
 			case termbox.KeyCtrlQ, termbox.KeyCtrlC:
 				close(done)
 				break mainloop
+			case termbox.KeyCtrlN:
+				gameStatus = gameStatusPlaying
+				reset()
+				gameView.clear()
+				continue
 			case termbox.KeyEnter:
 				ibox.keyEnter()
 				// debugView.debug(ibox.inputstr)
@@ -119,16 +127,20 @@ mainloop:
 					// debugView.debug(ibox.inputstr)
 					// debugView.debug(strconv.Itoa(len(fallingWords)))
 					if checkGameClear() {
-						gameView.printString(gameView.endx/2-len(msgGameClear), gameView.endy/2, msgGameClear, termbox.ColorWhite)
-						close(done)
-						break mainloop
+						gameStatus = gameStatusGameClear
+						ibox.inputstr = ""
+						continue
 					}
 					killCnt++
 					updateKillCnt(killCnt)
 					gameScore += len(ibox.inputstr)
 					updateGameScore(gameScore)
 
-					cpm = int(len(ibox.inputstr) * 60 / int(time.Now().Unix()-prelapsec))
+					lapsec := time.Now().Unix() - prelapsec
+					if lapsec == 0 {
+						lapsec = 1
+					}
+					cpm = int(len(ibox.inputstr) * 60 / int(lapsec))
 					prelapsec = time.Now().Unix()
 					updateCPM(cpm)
 				}

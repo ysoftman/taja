@@ -2,6 +2,7 @@ package main
 
 import (
 	"math/rand"
+	"strconv"
 	"time"
 
 	termbox "github.com/nsf/termbox-go"
@@ -41,6 +42,14 @@ const (
 	wordStatusFreeing
 )
 
+const (
+	gameStatusNone = iota
+	gameStatusPlaying
+	gameStatusQuit
+	gameStatusGameClear
+	gameStatusGameOver
+)
+
 var (
 	gameViewStartX = 0
 	gameViewStartY = 0
@@ -67,28 +76,45 @@ var (
 	debugViewStartY = 0
 	debugViewEndY   = 0
 
-	loadedWords  []word
-	fallingWords []word
-	gameView     *View
-	statusView   *View
-	cmdView      *View
-	debugView    *View
-	ibox         *inputBox
+	gameClearViewStartX = 0
+	gameClearViewEndX   = 0
+	gameClearViewStartY = 0
+	gameClearViewEndY   = 0
+
+	gameOverViewStartX = 0
+	gameOverViewEndX   = 0
+	gameOverViewStartY = 0
+	gameOverViewEndY   = 0
+
+	loadedWords   []word
+	fallingWords  []word
+	gameView      *View
+	statusView    *View
+	cmdView       *View
+	debugView     *View
+	gameClearView *View
+	gameOverView  *View
+	ibox          *inputBox
 
 	msgKillCnt   = "Kill Words : "
 	msgMissCnt   = "Miss Words : "
 	msgCPM       = "CPM(CharacterPerMinute) : "
 	msgGameScore = "Score : "
 
-	msgQuitCmd   = "Quit : ctrl + c  or  ctrl + q"
-	msgURL       = "http://github.com/ysoftman/taja"
-	msgGameClear = "Game Clear"
+	msgNewGameCmd = "NewGame : ctrl + n"
+	msgQuitCmd    = "Quit : ctrl + c  or  ctrl + q"
+	msgURL        = "http://github.com/ysoftman/taja"
+	msgGameClear  = " Game Clear "
+	msgGameOver   = " Game Over "
 
 	killCnt   = 0
 	missCnt   = 0
+	liveCnt   = 0
 	gameScore = 0
 	prelapsec = time.Now().Unix()
 	cpm       = 0
+
+	gameStatus = gameStatusNone
 )
 
 func reset() {
@@ -119,7 +145,53 @@ func reset() {
 	debugViewStartY = cmdViewEndY
 	debugViewEndY = my
 
+	gameClearViewStartX = (gameViewEndX / 2) - len(msgGameClear) - 1
+	gameClearViewEndX = gameClearViewStartX + len(msgGameClear) + 2
+	gameClearViewStartY = (gameViewEndY / 2) - 3
+	gameClearViewEndY = gameClearViewStartY + 3
+
+	gameOverViewStartX = (gameViewEndX / 2) - len(msgGameOver) - 1
+	gameOverViewEndX = gameOverViewStartX + len(msgGameOver) + 2
+	gameOverViewStartY = (gameViewEndY / 2) - 3
+	gameOverViewEndY = gameOverViewStartY + 3
+
+	killCnt = 0
+	missCnt = 0
+	liveCnt = 5
+	gameScore = 0
+	prelapsec = time.Now().Unix()
+	cpm = 0
+
 	rand.Seed(time.Now().UnixNano())
+
+	loadedWords = []word{}
+	setEnemyWords()
+
+	fallingWords = []word{}
+
+	if gameView != nil {
+		gameView.clear()
+	}
+	if ibox != nil {
+		ibox.clear()
+	}
+	if statusView != nil {
+		statusView.clear()
+		updateKillCnt(0)
+		updateMissCnt(0)
+		updateGameScore(0)
+		updateCPM(0)
+	}
+	if cmdView != nil {
+		cmdView.clear()
+		cmdView.printString(1, 1, msgNewGameCmd, termbox.ColorYellow)
+		cmdView.printString(1, 2, msgQuitCmd, termbox.ColorYellow)
+		cmdView.printString(1, 3, msgURL, termbox.ColorDefault)
+	}
+	if debugView != nil {
+		debugView.clear()
+	}
+
 }
 
 func render() {
@@ -184,4 +256,30 @@ func checkGameClear() bool {
 		}
 	}
 	return true
+}
+
+func updateKillCnt(n int) {
+	statusView.printString(1, 1, msgKillCnt+strconv.Itoa(n), termbox.ColorDefault)
+}
+
+func updateMissCnt(n int) {
+	statusView.printString(1, 2, msgMissCnt+strconv.Itoa(n)+" / "+strconv.Itoa(liveCnt), termbox.ColorDefault)
+}
+
+func updateCPM(n int) {
+	statusView.printString(1, 3, msgCPM+strconv.Itoa(n), termbox.ColorDefault)
+}
+
+func updateGameScore(n int) {
+	statusView.printString(1, 4, msgGameScore+strconv.Itoa(n), termbox.ColorDefault)
+}
+
+func showGameClear() {
+	gameClearView.drawView()
+	gameClearView.printString(1, 1, msgGameClear, termbox.ColorRed|termbox.AttrBold)
+}
+
+func showGameOver() {
+	gameOverView.drawView()
+	gameOverView.printString(1, 1, msgGameOver, termbox.ColorRed|termbox.AttrBold)
 }
