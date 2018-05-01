@@ -4,7 +4,6 @@
 package main
 
 import (
-	"strconv"
 	"sync"
 	"time"
 
@@ -37,11 +36,8 @@ func startGame() {
 	statusView = NewView(statusViewStartX, statusViewEndX, statusViewStartY, statusViewEndY, termbox.ColorMagenta|termbox.AttrBold, termbox.ColorDefault)
 	statusView.drawView()
 
-	cmdView = NewView(cmdViewStartX, cmdViewEndX, cmdViewStartY, cmdViewEndY, termbox.ColorCyan|termbox.AttrBold, termbox.ColorDefault)
-	cmdView.drawView()
-
-	debugView = NewView(debugViewStartX, debugViewEndX, debugViewStartY, debugViewEndY, termbox.ColorBlack|termbox.AttrBold, termbox.ColorDefault)
-	debugView.drawView()
+	tempView = NewView(tempViewStartX, tempViewEndX, tempViewStartY, tempViewEndY, termbox.ColorCyan|termbox.AttrBold, termbox.ColorDefault)
+	tempView.drawView()
 
 	gameClearView = NewView(gameClearViewStartX, gameClearViewEndX, gameClearViewStartY, gameClearViewEndY, termbox.ColorBlack|termbox.AttrBold, termbox.ColorDefault)
 
@@ -57,16 +53,14 @@ func startGame() {
 				return
 
 			case <-time.After(1 * time.Second):
-				debugView.debug("gameStatus : " + strconv.Itoa(gameStatus))
+				updateGameStatus(gameStatus)
 				if gameStatus == gameStatusNone {
 					reset()
 					render()
 					continue
 				}
 				if gameStatus == gameStatusPlaying {
-					debugstr := "loadedWords : " + strconv.Itoa(len(loadedWords)) + ", "
-					debugstr += "fallingWords : " + strconv.Itoa(len(fallingWords)) + ""
-					debugView.debug(debugstr)
+					updateWordStatus()
 					// Add Enemy Word
 					nw := getRandomWord()
 					if nw.status == wordStatusCreated {
@@ -94,6 +88,8 @@ func startGame() {
 							gameView.printString(fallingWords[idx].x, fallingWords[idx].y, fallingWords[idx].str, termbox.ColorWhite)
 						}
 					}
+					elapsedSec++
+					updateElapsedSec(elapsedSec)
 					continue
 				}
 				if gameStatus == gameStatusGameClear {
@@ -122,10 +118,7 @@ mainloop:
 				continue
 			case termbox.KeyEnter:
 				ibox.keyEnter()
-				// debugView.debug(ibox.inputstr)
 				if deleteFallingWord(ibox.inputstr) {
-					// debugView.debug(ibox.inputstr)
-					// debugView.debug(strconv.Itoa(len(fallingWords)))
 					if checkGameClear() {
 						gameStatus = gameStatusGameClear
 						ibox.inputstr = ""

@@ -55,8 +55,3 @@ func (v *View) clearPrePos(w word) {
 	}
 	render()
 }
-
-func (v *View) debug(str string) {
-	v.clear()
-	v.printString(1, 1, str, termbox.ColorYellow)
-}
