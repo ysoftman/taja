@@ -53,14 +53,13 @@ func startGame() {
 				return
 
 			case <-time.After(1 * time.Second):
-				updateGameStatus(gameStatus)
+				updateStatus()
 				if gameStatus == gameStatusNone {
 					reset()
 					render()
 					continue
 				}
 				if gameStatus == gameStatusPlaying {
-					updateWordStatus()
 					// Add Enemy Word
 					nw := getRandomWord()
 					if nw.status == wordStatusCreated {
@@ -75,8 +74,6 @@ func startGame() {
 							fallingWords[idx].y = gameView.starty + 1
 							if fallingWords[idx].status == wordStatusCreated {
 								missCnt++
-								updateMissCnt(missCnt)
-
 								if missCnt == liveCnt {
 									gameStatus = gameStatusGameOver
 									break
@@ -89,7 +86,6 @@ func startGame() {
 						}
 					}
 					elapsedSec++
-					updateElapsedSec(elapsedSec)
 					continue
 				}
 				if gameStatus == gameStatusGameClear {
@@ -125,17 +121,15 @@ mainloop:
 						continue
 					}
 					killCnt++
-					updateKillCnt(killCnt)
-					gameScore += len(ibox.inputstr)
-					updateGameScore(gameScore)
 
-					lapsec := time.Now().Unix() - prelapsec
-					if lapsec == 0 {
-						lapsec = 1
+					gameScore += len(ibox.inputstr)
+					matchLapSec = int(time.Now().Unix() - prelapsec)
+					if matchLapSec == 0 {
+						matchLapSec = 1
 					}
-					cpm = int(len(ibox.inputstr) * 60 / int(lapsec))
+					matchWordLen = len(ibox.inputstr)
+					cpmValue = (matchWordLen * 60) / matchLapSec
 					prelapsec = time.Now().Unix()
-					updateCPM(cpm)
 				}
 				ibox.inputstr = ""
 				continue

@@ -98,20 +98,21 @@ var (
 	msgLoadWordsCnt    = "LoadWords : "
 	msgFallingWordsCnt = "FallingWords : "
 	msgElapsedSec      = "ElapsedSec : "
+	msgNewGameCmd      = "NewGame : ctrl + n"
+	msgQuitCmd         = "Quit : ctrl + c  or  ctrl + q"
+	msgGameClear       = " Game Clear "
+	msgGameOver        = " Game Over "
+	paddingStr         = "     "
 
-	msgNewGameCmd = "NewGame : ctrl + n"
-	msgQuitCmd    = "Quit : ctrl + c  or  ctrl + q"
-	msgURL        = "Github : http://github.com/ysoftman/taja"
-	msgGameClear  = " Game Clear "
-	msgGameOver   = " Game Over "
-
-	killCnt    = 0
-	missCnt    = 0
-	liveCnt    = 0
-	gameScore  = 0
-	prelapsec  = time.Now().Unix()
-	cpm        = 0
-	elapsedSec = 0
+	killCnt      = 0
+	missCnt      = 0
+	liveCnt      = 0
+	gameScore    = 0
+	prelapsec    = time.Now().Unix()
+	cpmValue     = 0
+	matchWordLen = 0
+	matchLapSec  = 0
+	elapsedSec   = 0
 
 	gameStatus = gameStatusNone
 )
@@ -154,7 +155,9 @@ func reset() {
 	liveCnt = 5
 	gameScore = 0
 	prelapsec = time.Now().Unix()
-	cpm = 0
+	cpmValue = 0
+	matchWordLen = 0
+	matchLapSec = 0
 	elapsedSec = 0
 
 	rand.Seed(time.Now().UnixNano())
@@ -172,14 +175,7 @@ func reset() {
 	}
 	if statusView != nil {
 		statusView.clear()
-		updateKillCnt(0)
-		updateMissCnt(0)
-		updateGameScore(0)
-		updateCPM(0)
-		updateGameStatus(0)
-		updateWordStatus()
-		updateCommand()
-		updateElapsedSec(0)
+		updateStatus()
 	}
 	if tempView != nil {
 		tempView.clear()
@@ -250,48 +246,42 @@ func checkGameClear() bool {
 	return true
 }
 
-func updateKillCnt(n int) {
-	statusView.printString(1, 1, msgKillCnt+strconv.Itoa(n), termbox.ColorDefault|termbox.AttrBold)
-}
-
-func updateMissCnt(n int) {
-	statusView.printString(1, 2, msgMissCnt+strconv.Itoa(n)+" / "+strconv.Itoa(liveCnt), termbox.ColorDefault|termbox.AttrBold)
-}
-
-func updateCPM(n int) {
-	statusView.printString(1, 3, msgCPM+strconv.Itoa(n), termbox.ColorDefault|termbox.AttrBold)
-}
-
-func updateGameScore(n int) {
-	statusView.printString(1, 4, msgGameScore+strconv.Itoa(n), termbox.ColorDefault|termbox.AttrBold)
-}
-
-func updateGameStatus(gameStatus int) {
-	statusView.printString(1, 5, msgGameStatus+strconv.Itoa(gameStatus), termbox.ColorDefault|termbox.AttrBold)
-}
-
-func updateWordStatus() {
-	wordsStatus := msgLoadWordsCnt + strconv.Itoa(len(loadedWords)) + ", "
-
+func updateStatus() {
+	line := 0
+	line++
+	statusView.printString(1, line, "[Status]", termbox.ColorDefault|termbox.AttrBold)
+	line++
+	statusView.printString(1, line, msgKillCnt+strconv.Itoa(killCnt), termbox.ColorDefault|termbox.AttrBold)
+	line++
+	statusView.printString(1, line, msgMissCnt+strconv.Itoa(missCnt)+" / "+strconv.Itoa(liveCnt), termbox.ColorDefault|termbox.AttrBold)
+	cpmStatus := msgCPM + "matchWord(" + strconv.Itoa(matchWordLen) + ")*60 / lapsec(" + strconv.Itoa(matchLapSec) + ") = " + strconv.Itoa(cpmValue) + paddingStr
+	line++
+	statusView.printString(1, line, cpmStatus, termbox.ColorDefault|termbox.AttrBold)
+	line++
+	statusView.printString(1, line, msgGameScore+strconv.Itoa(gameScore), termbox.ColorDefault|termbox.AttrBold)
+	line++
+	statusView.printString(1, line, msgGameStatus+strconv.Itoa(gameStatus), termbox.ColorDefault|termbox.AttrBold)
 	cnt := 0
 	for _, v := range fallingWords {
 		if v.status == wordStatusCreated {
 			cnt++
 		}
 	}
-	wordsStatus += msgFallingWordsCnt + strconv.Itoa(cnt) + "     "
-	statusView.printString(1, 6, wordsStatus, termbox.ColorDefault|termbox.AttrBold)
-}
-
-func updateElapsedSec(sec int) {
-	statusView.printString(1, 7, msgElapsedSec+strconv.Itoa(sec), termbox.ColorDefault|termbox.AttrBold)
-}
-
-func updateCommand() {
-	statusView.printString(1, 9, "[Command]", termbox.ColorYellow|termbox.AttrBold)
-	statusView.printString(1, 10, msgNewGameCmd, termbox.ColorYellow|termbox.AttrBold)
-	statusView.printString(1, 11, msgQuitCmd, termbox.ColorYellow|termbox.AttrBold)
-	statusView.printString(1, 12, msgURL, termbox.ColorYellow)
+	wordsStatus := msgLoadWordsCnt + strconv.Itoa(len(loadedWords)) + ", " + msgFallingWordsCnt + strconv.Itoa(cnt) + paddingStr
+	line++
+	statusView.printString(1, line, wordsStatus, termbox.ColorDefault|termbox.AttrBold)
+	line++
+	statusView.printString(1, line, msgElapsedSec+strconv.Itoa(elapsedSec), termbox.ColorDefault|termbox.AttrBold)
+	line++
+	line++
+	statusView.printString(1, line, "[Command]", termbox.ColorYellow|termbox.AttrBold)
+	line++
+	statusView.printString(1, line, msgNewGameCmd, termbox.ColorYellow|termbox.AttrBold)
+	line++
+	statusView.printString(1, line, msgQuitCmd, termbox.ColorYellow|termbox.AttrBold)
+	line++
+	line++
+	statusView.printString(1, line, time.Now().String(), termbox.ColorBlack|termbox.AttrBold)
 }
 
 func showGameClear() {
