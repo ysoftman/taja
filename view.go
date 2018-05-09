@@ -19,7 +19,7 @@ func NewView(x1, x2, y1, y2 int, fg, bg termbox.Attribute) *View {
 func (v *View) drawView() {
 	for y := v.starty; y < v.endy; y++ {
 		for x := v.startx; x < v.endx; x++ {
-			ch := '█'
+			ch := ' '
 			if y != v.starty && y != v.endy-1 && x != v.startx && x != v.endx-1 {
 				continue
 			}
