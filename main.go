@@ -39,27 +39,39 @@ func startGame() {
 	tempView = NewView(tempViewStartX, tempViewEndX, tempViewStartY, tempViewEndY, termbox.ColorCyan|termbox.AttrBold, termbox.ColorCyan)
 	tempView.drawView()
 
+	levelupView = NewView(levelupViewStartX, levelupViewEndX, levelupViewStartY, levelupViewEndY, termbox.ColorBlack|termbox.AttrBold, termbox.ColorBlack)
+
 	gameClearView = NewView(gameClearViewStartX, gameClearViewEndX, gameClearViewStartY, gameClearViewEndY, termbox.ColorBlack|termbox.AttrBold, termbox.ColorBlack)
 
 	gameOverView = NewView(gameOverViewStartX, gameOverViewEndX, gameOverViewStartY, gameOverViewEndY, termbox.ColorBlack|termbox.AttrBold, termbox.ColorBlack)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
+
+	// game play routine
 	go func() {
 		defer wg.Done()
+		loopcnt := 0
 		for {
 			select {
 			case <-done:
 				return
 
-			case <-time.After(1 * time.Second):
-				updateStatus()
-				if gameStatus == gameStatusNone {
-					reset()
-					render()
-					continue
+			case <-time.After(100 * time.Millisecond):
+				loopcnt++
+				// for debug
+				// tempView.printString(1, 1, "loopcnt: "+strconv.Itoa(loopcnt)+"   ", termbox.ColorWhite)
+
+				if loopcnt > 10 {
+					loopcnt = 0
 				}
+
 				if gameStatus == gameStatusPlaying {
+					// 게임 레벨에 따른 게임 스피드 조정
+					if loopcnt >= gameLevel {
+						continue
+					}
+
 					// Add Enemy Word
 					nw := getRandomWord()
 					if nw.status == wordStatusCreated {
@@ -67,7 +79,6 @@ func startGame() {
 					}
 					// Refresh All Enemy Words
 					for idx := range fallingWords {
-
 						gameView.clearPrePos(fallingWords[idx])
 						fallingWords[idx].y++
 						if fallingWords[idx].y >= gameView.endy {
@@ -88,7 +99,18 @@ func startGame() {
 					elapsedSec++
 					continue
 				}
-				if gameStatus == gameStatusGameClear {
+				if loopcnt%10 == 0 {
+					updateStatus()
+					if gameStatus == gameStatusNone {
+						reset()
+						render()
+						continue
+					}
+				}
+				if gameStatus == gameStatusLevelUp {
+					showLevelUp()
+					continue
+				} else if gameStatus == gameStatusGameClear {
 					showGameClear()
 					continue
 				} else if gameStatus == gameStatusGameOver {
@@ -113,12 +135,22 @@ mainloop:
 				gameView.clear()
 				continue
 			case termbox.KeyEnter:
+				if gameStatus == gameStatusLevelUp {
+					gameStatus = gameStatusPlaying
+					gameView.clear()
+					continue
+				}
 				ibox.keyEnter()
 				if deleteFallingWord(ibox.inputstr) {
 					if checkGameClear() {
-						gameStatus = gameStatusGameClear
-						ibox.inputstr = ""
-						continue
+						gameLevel++
+						if gameLevel > 5 {
+							gameStatus = gameStatusGameClear
+							ibox.inputstr = ""
+							continue
+						}
+						gameStatus = gameStatusLevelUp
+						setEnemyWords()
 					}
 					killCnt++
 
@@ -131,7 +163,11 @@ mainloop:
 					cpmValue = (matchWordLen * 60) / matchLapSec
 					prelapsec = time.Now().Unix()
 				}
+				// for debug
+
+				tempView.printString(1, 2, "inputstr: "+ibox.inputstr+"                    ", termbox.ColorWhite)
 				ibox.inputstr = ""
+				updateStatus()
 				continue
 			case termbox.KeySpace:
 				ibox.setChar(' ')
