@@ -199,10 +199,10 @@ func reset() {
 }
 
 func render() {
-	gameView.drawView()
+	gameView.drawFrame()
 	ibox.drawInputBox()
-	statusView.drawView()
-	tempView.drawView()
+	statusView.drawFrame()
+	tempView.drawFrame()
 	termbox.Flush()
 }
 
@@ -400,16 +400,16 @@ func updateStatus() {
 }
 
 func showLevelUp() {
-	levelupView.drawView()
+	levelupView.drawFrame()
 	levelupView.printString(1, 1, msgLevelUp+strconv.Itoa(gameLevel), termbox.ColorRed|termbox.AttrBold)
 }
 
 func showGameClear() {
-	gameClearView.drawView()
+	gameClearView.drawFrame()
 	gameClearView.printString(1, 1, msgGameClear, termbox.ColorRed|termbox.AttrBold)
 }
 
 func showGameOver() {
-	gameOverView.drawView()
+	gameOverView.drawFrame()
 	gameOverView.printString(1, 1, msgGameOver, termbox.ColorRed|termbox.AttrBold)
 }

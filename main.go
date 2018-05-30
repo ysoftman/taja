@@ -4,6 +4,7 @@
 package main
 
 import (
+	"strconv"
 	"sync"
 	"time"
 
@@ -28,16 +29,16 @@ func startGame() {
 	reset()
 
 	gameView = NewView(gameViewStartX, gameViewEndX, gameViewStartY, gameViewEndY, termbox.ColorGreen|termbox.AttrBold, termbox.ColorGreen)
-	gameView.drawView()
+	gameView.drawFrame()
 
 	ibox = NewInputBox(inputBoxStartX, inputBoxEndX, inputBoxStartY, inputBoxEndY, termbox.ColorYellow|termbox.AttrBold, termbox.ColorYellow)
 	ibox.drawInputBox()
 
 	statusView = NewView(statusViewStartX, statusViewEndX, statusViewStartY, statusViewEndY, termbox.ColorMagenta|termbox.AttrBold, termbox.ColorMagenta)
-	statusView.drawView()
+	statusView.drawFrame()
 
 	tempView = NewView(tempViewStartX, tempViewEndX, tempViewStartY, tempViewEndY, termbox.ColorCyan|termbox.AttrBold, termbox.ColorCyan)
-	tempView.drawView()
+	tempView.drawFrame()
 
 	levelupView = NewView(levelupViewStartX, levelupViewEndX, levelupViewStartY, levelupViewEndY, termbox.ColorBlack|termbox.AttrBold, termbox.ColorBlack)
 
@@ -60,7 +61,8 @@ func startGame() {
 			case <-time.After(100 * time.Millisecond):
 				loopcnt++
 				// for debug
-				// tempView.printString(1, 1, "loopcnt: "+strconv.Itoa(loopcnt)+"   ", termbox.ColorWhite)
+				tempView.clearLine(1)
+				tempView.printString(1, 1, "loopcnt: "+strconv.Itoa(loopcnt), termbox.ColorWhite)
 
 				if loopcnt > 10 {
 					loopcnt = 0
@@ -79,7 +81,7 @@ func startGame() {
 					}
 					// Refresh All Enemy Words
 					for idx := range fallingWords {
-						gameView.clearPrePos(fallingWords[idx])
+						gameView.clearWord(fallingWords[idx])
 						fallingWords[idx].y++
 						if fallingWords[idx].y >= gameView.endy {
 							fallingWords[idx].y = gameView.starty + 1
@@ -102,7 +104,6 @@ func startGame() {
 				if loopcnt%10 == 0 {
 					updateStatus()
 					if gameStatus == gameStatusNone {
-						reset()
 						render()
 						continue
 					}
@@ -132,7 +133,6 @@ mainloop:
 			case termbox.KeyCtrlN:
 				gameStatus = gameStatusPlaying
 				reset()
-				gameView.clear()
 				continue
 			case termbox.KeyEnter:
 				if gameStatus == gameStatusLevelUp {
@@ -164,8 +164,8 @@ mainloop:
 					prelapsec = time.Now().Unix()
 				}
 				// for debug
-
-				tempView.printString(1, 2, "inputstr: "+ibox.inputstr+"                    ", termbox.ColorWhite)
+				tempView.clearLine(2)
+				tempView.printString(1, 2, "inputstr: "+ibox.inputstr, termbox.ColorWhite)
 				ibox.inputstr = ""
 				updateStatus()
 				continue

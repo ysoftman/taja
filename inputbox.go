@@ -20,7 +20,7 @@ func NewInputBox(x1, x2, y1, y2 int, fg, bg termbox.Attribute) *inputBox {
 func (ib *inputBox) drawInputBox() {
 	for y := ib.starty; y < ib.endy; y++ {
 		for x := ib.startx; x < ib.endx; x++ {
-			ch := '█'
+			ch := ' '
 			if y != ib.starty && y != ib.endy-1 && x != ib.startx && x != ib.endx-1 {
 				continue
 			}
@@ -58,7 +58,7 @@ func (ib *inputBox) delChar() {
 		return
 	}
 
-	ib.inputstr = ib.inputstr[:1]
+	ib.inputstr = ib.inputstr[:len(ib.inputstr)-1]
 
 	termbox.SetCell(ib.curpos-1, ib.starty+1, ' ', termbox.ColorDefault, termbox.ColorDefault)
 	ib.curpos--
