@@ -258,10 +258,10 @@ func setEnemyWords() {
 			{wordStatusCreated, 0, 0, "Stay hungry stay foolish."},
 			{wordStatusCreated, 0, 0, "What time is it now?"},
 			{wordStatusCreated, 0, 0, "I will be back."},
-			{wordStatusCreated, 0, 0, "I'm your father"},
+			{wordStatusCreated, 0, 0, "I'm your father."},
 			{wordStatusCreated, 0, 0, "Make it count."},
-			{wordStatusCreated, 0, 0, "I want to live with the flow"},
-			{wordStatusCreated, 0, 0, "If the sun were to rise in the west, my love would be unchaged forever"},
+			{wordStatusCreated, 0, 0, "I want to live with the flow."},
+			{wordStatusCreated, 0, 0, "If the sun were to rise in the west, my love would be unchanged forever."},
 			{wordStatusCreated, 0, 0, "Keep Calm and Carry On"},
 			{wordStatusCreated, 0, 0, "Let it go, the cold never bothered me anyway"},
 		}
